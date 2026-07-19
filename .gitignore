@@ -56,3 +56,9 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /postgres
+
+# Local Graphify analysis artifacts
+/graphify-out/
+
+# Local object storage used by the blog asset adapter
+/.local/

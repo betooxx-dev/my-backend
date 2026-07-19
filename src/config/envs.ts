@@ -4,7 +4,7 @@ import type { ValidationResult } from 'joi';
 import { envsSchema } from './envs.schema';
 
 interface EnvVars {
-  STAGE: string;
+  STAGE: 'dev' | 'test' | 'prod';
   PORT: number;
   CLIENT_URL: string;
   DB_HOST: string;
@@ -12,8 +12,18 @@ interface EnvVars {
   DB_USER: string;
   DB_PASSWORD: string;
   DB_NAME: string;
+  DB_SSL_REJECT_UNAUTHORIZED: boolean;
+  DB_SSL_CA?: string;
   JWT_SECRET: string;
   API_KEY_PREFIX: string;
+  API_PUBLIC_URL: string;
+  BLOG_ASSET_DRIVER: 'local' | 'r2';
+  BLOG_ASSET_LOCAL_DIR: string;
+  BLOG_ASSET_MAX_BYTES: number;
+  R2_ACCOUNT_ID?: string;
+  R2_BUCKET?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
 }
 
 const validation = envsSchema.validate(
@@ -35,6 +45,16 @@ export const envs = {
   dbUser: envVars.DB_USER,
   dbPassword: envVars.DB_PASSWORD,
   dbName: envVars.DB_NAME,
+  dbSslRejectUnauthorized: envVars.DB_SSL_REJECT_UNAUTHORIZED,
+  dbSslCa: envVars.DB_SSL_CA?.replace(/\\n/g, '\n'),
   jwtSecret: envVars.JWT_SECRET,
   apiKeyPrefix: envVars.API_KEY_PREFIX,
+  apiPublicUrl: envVars.API_PUBLIC_URL.replace(/\/$/, ''),
+  blogAssetDriver: envVars.BLOG_ASSET_DRIVER,
+  blogAssetLocalDir: envVars.BLOG_ASSET_LOCAL_DIR,
+  blogAssetMaxBytes: envVars.BLOG_ASSET_MAX_BYTES,
+  r2AccountId: envVars.R2_ACCOUNT_ID,
+  r2Bucket: envVars.R2_BUCKET,
+  r2AccessKeyId: envVars.R2_ACCESS_KEY_ID,
+  r2SecretAccessKey: envVars.R2_SECRET_ACCESS_KEY,
 };

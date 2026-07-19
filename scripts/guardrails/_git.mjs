@@ -37,12 +37,18 @@ export function diffNameOnly({ baseRef, diffFilter = 'ACMR' } = {}) {
   const base = baseRef ?? resolveBaseRef();
   if (!base) return [];
 
-  const output = tryGit(`diff --name-only --diff-filter=${diffFilter} ${base}...HEAD`);
-  if (!output) return [];
+  const outputs = [
+    tryGit(`diff --name-only --diff-filter=${diffFilter} ${base}...HEAD`),
+    tryGit(`diff --name-only --diff-filter=${diffFilter} HEAD`),
+    tryGit('ls-files --others --exclude-standard'),
+  ];
 
-  return output
-    .split(/\r?\n/)
-    .map((file) => file.replaceAll('\\', '/'))
-    .filter(Boolean);
+  return Array.from(
+    new Set(
+      outputs
+        .flatMap((output) => output.split(/\r?\n/))
+        .map((file) => file.replaceAll('\\', '/'))
+        .filter(Boolean),
+    ),
+  );
 }
-

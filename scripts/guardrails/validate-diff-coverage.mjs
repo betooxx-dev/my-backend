@@ -21,7 +21,12 @@ function readCoverage() {
 function changedLinesByFile() {
   if (!baseRef) return new Map();
 
-  const diff = tryGit(`diff --unified=0 ${baseRef}...HEAD -- src`);
+  const diff = [
+    tryGit(`diff --unified=0 ${baseRef}...HEAD -- src`),
+    tryGit('diff --unified=0 HEAD -- src'),
+  ]
+    .filter(Boolean)
+    .join('\n');
   const files = new Map();
   let currentFile = '';
 
@@ -48,6 +53,21 @@ function changedLinesByFile() {
     for (let offset = 0; offset < count; offset++) {
       lines.add(start + offset);
     }
+  }
+
+  const untracked = tryGit('ls-files --others --exclude-standard -- src')
+    .split(/\r?\n/)
+    .map((file) => file.replaceAll('\\', '/'))
+    .filter(
+      (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'),
+    );
+
+  for (const file of untracked) {
+    const lines = readFileSync(path.resolve(file), 'utf8').split(/\r?\n/);
+    files.set(
+      file,
+      new Set(lines.map((_, index) => index + 1)),
+    );
   }
 
   return files;
@@ -125,4 +145,3 @@ if (percentage < THRESHOLD) {
 console.log(
   `[validate:diff-coverage] OK: ${percentage.toFixed(2)}% changed-line coverage (${covered}/${coverable}).`,
 );
-

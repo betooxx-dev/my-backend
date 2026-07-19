@@ -1,19 +1,18 @@
-name: coverage-diff
+name: e2e
 
 on:
   pull_request:
+  push:
+    branches: [master]
 
 jobs:
-  coverage-diff:
+  e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test:mvp:cov:ci
-      - run: npm run validate:diff-coverage
+      - run: npm run test:e2e:cov:ci

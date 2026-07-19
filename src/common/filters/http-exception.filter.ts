@@ -17,17 +17,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const boundaryStatus = this.getBoundaryStatus(exception);
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : (boundaryStatus ?? HttpStatus.INTERNAL_SERVER_ERROR);
 
     const error =
       exception instanceof HttpException
         ? exception.getResponse()
-        : 'Internal server error';
+        : boundaryStatus && exception instanceof Error
+          ? exception.message
+          : 'Internal server error';
 
-    if (!(exception instanceof HttpException)) {
+    if (status >= 500) {
       this.logger.error(
         `${request.method} ${request.originalUrl}`,
         exception instanceof Error ? exception.stack : String(exception),
@@ -40,5 +43,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: request.originalUrl,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private getBoundaryStatus(exception: unknown): number | undefined {
+    if (!(exception instanceof Error)) return undefined;
+    const candidate = exception as Error & {
+      status?: unknown;
+      statusCode?: unknown;
+    };
+    const value = candidate.statusCode ?? candidate.status;
+
+    return typeof value === 'number' && value >= 400 && value < 500
+      ? value
+      : undefined;
   }
 }

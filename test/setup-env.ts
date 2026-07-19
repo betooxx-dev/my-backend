@@ -1,0 +1,15 @@
+Object.assign(process.env, {
+  STAGE: 'test',
+  PORT: '5000',
+  CLIENT_URL: 'http://localhost:3000',
+  DB_HOST: 'localhost',
+  DB_PORT: '5432',
+  DB_USER: 'postgres',
+  DB_PASSWORD: 'postgres',
+  DB_NAME: 'argos_test',
+  JWT_SECRET: 'unit-test-secret-that-is-at-least-32-characters',
+  API_KEY_PREFIX: 'argos_',
+  API_PUBLIC_URL: 'http://localhost:5000/api',
+  BLOG_ASSET_DRIVER: 'local',
+  BLOG_ASSET_LOCAL_DIR: '.local/test-assets',
+});

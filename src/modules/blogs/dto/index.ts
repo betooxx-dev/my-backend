@@ -4,6 +4,7 @@ export {
   BlogLocaleQueryDto,
   BlogPostParamsDto,
 } from './blog-query.dto';
-export { CreateBlogCommentDto } from './create-blog-comment.dto';
-export { CreateBlogRatingDto } from './create-blog-rating.dto';
-export { CreateBlogRecommendationDto } from './create-blog-recommendation.dto';
+export { CreateAdminBlogPostDto } from './create-admin-blog-post.dto';
+export { UpdateAdminBlogPostDto } from './update-admin-blog-post.dto';
+export { UploadBlogAssetDto } from './upload-blog-asset.dto';
+export { AdminBlogPostQueryDto } from './admin-blog-post-query.dto';

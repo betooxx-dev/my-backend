@@ -21,12 +21,15 @@
     "test:cov:ci": "jest --coverage --runInBand",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:ci": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:cov": "jest --config ./test/jest-e2e.json --coverage",
+    "test:e2e:cov:ci": "jest --config ./test/jest-e2e.json --coverage --runInBand",
+    "coverage:merge": "node scripts/guardrails/merge-coverage.mjs",
+    "test:mvp:cov:ci": "npm run test:cov:ci && npm run test:e2e:cov:ci && npm run coverage:merge",
     "api-key:create": "ts-node -r tsconfig-paths/register scripts/api-keys/create.ts",
     "api-key:list": "ts-node -r tsconfig-paths/register scripts/api-keys/list.ts",
     "api-key:revoke": "ts-node -r tsconfig-paths/register scripts/api-keys/revoke.ts",
-    "blog:seed": "ts-node -r tsconfig-paths/register scripts/blogs/seed.ts",
-    "blog:reset": "ts-node -r tsconfig-paths/register scripts/blogs/reset.ts",
-    "audit": "npm audit --audit-level=critical",
+    "audit": "npm audit --audit-level=moderate",
     "audit:low-warn": "node scripts/guardrails/audit-low-warn.mjs",
     "audit:check": "npm run audit:low-warn && npm run audit",
     "validate:file-size": "node scripts/guardrails/validate-new-file-size.mjs",
@@ -34,10 +37,12 @@
     "validate:migrations": "node scripts/guardrails/validate-entity-migration.mjs",
     "validate:controller-security": "node scripts/guardrails/validate-controller-security.mjs",
     "validate:env-access": "node scripts/guardrails/validate-env-access.mjs",
+    "validate:env-example": "node scripts/guardrails/validate-env-example.mjs",
     "validate:typeorm-safety": "node scripts/guardrails/validate-typeorm-safety.mjs",
-    "validate:guardrails": "npm run validate:file-size && npm run validate:migrations && npm run validate:controller-security && npm run validate:env-access && npm run validate:typeorm-safety"
+    "validate:guardrails": "npm run validate:file-size && npm run validate:migrations && npm run validate:controller-security && npm run validate:env-access && npm run validate:env-example && npm run validate:typeorm-safety"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -50,6 +55,7 @@
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.35.3",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.28"
   },
@@ -59,14 +65,17 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@testcontainers/postgresql": "^12.0.4",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
+    "istanbul-lib-coverage": "^3.2.2",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
@@ -92,8 +101,11 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "../coverage/unit",
     "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/../test/setup-env.ts"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/$1",
       "^@config/(.*)$": "<rootDir>/config/$1",

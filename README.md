@@ -1,98 +1,115 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Argos
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Argos is Alberto's personal NestJS API. Its first complete product surface is
+the blog backend consumed by the personal website and Studio: Markdown posts,
+draft/published lifecycle, API-key protected administration, and image assets.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Node.js 22 and npm
+- Docker (for the local PostgreSQL service and the E2E test suite)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Local setup
 
-## Project setup
-
-```bash
-$ npm install
+```powershell
+npm ci
+Copy-Item .env.example .env
+docker compose up -d db
+npm run start:dev
 ```
 
-## Compile and run the project
+The API uses the `/api` prefix. Swagger is available at `/docs` while the app
+is running. Local asset bytes are written below `.local/blog-assets`, which is
+ignored by Git.
 
-```bash
-# development
-$ npm run start
+Create an administrative API key after PostgreSQL is running:
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```powershell
+npm run api-key:create -- --name studio --scopes blog:admin
 ```
 
-## Run tests
+The token is shown only once. Studio sends it as
+`Authorization: Bearer <token>` for every `/api/blog/admin/*` request.
 
-```bash
-# unit tests
-$ npm run test
+## Blog contract
 
-# e2e tests
-$ npm run test:e2e
+- Posts are created as `draft`; only the explicit publish/unpublish endpoints
+  change lifecycle state.
+- Content is stored and returned as Markdown in `contentMarkdown`.
+- Public post, tag, related-post, and asset endpoints do not require an API key.
+- Administrative post and asset endpoints require the `blog:admin` scope.
+- Uploads use `multipart/form-data` with a `file` and non-empty `altText` field.
+- Accepted images are JPEG, PNG, WebP, and AVIF. The default upload limit is
+  8 MiB; decoded dimensions are validated by the service.
 
-# test coverage
-$ npm run test:cov
+## Asset storage
+
+The metadata and public URL contract is identical in both modes; changing the
+driver does not change the website or Studio integration.
+
+### Local development
+
+The checked-in `.env.example` defaults to:
+
+```dotenv
+BLOG_ASSET_DRIVER=local
+BLOG_ASSET_LOCAL_DIR=.local/blog-assets
+BLOG_ASSET_MAX_BYTES=8388608
+API_PUBLIC_URL=http://localhost:5000/api
 ```
 
-## Deployment
+`API_PUBLIC_URL` must be the externally reachable API base URL because it is
+used to build asset URLs returned to clients.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Cloudflare R2
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+For production, use an R2 bucket and credentials restricted to that bucket:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```dotenv
+STAGE=prod
+BLOG_ASSET_DRIVER=r2
+BLOG_ASSET_MAX_BYTES=8388608
+API_PUBLIC_URL=https://api.example.com/api
+R2_ACCOUNT_ID=your-account-id
+R2_BUCKET=your-bucket
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Do not commit real credentials. Startup validation rejects R2 mode when any of
+the four R2 values is missing. Production database TLS verifies certificates
+by default; set `DB_SSL_CA` to the provider CA (with escaped `\n` line breaks)
+when it is not already trusted by the runtime.
 
-## Resources
+## Validation
 
-Check out a few resources that may come in handy when working with NestJS:
+```powershell
+npm run build
+npm run lint:check
+npm run test:ci
+npm run test:e2e:ci
+npm run test:e2e:cov:ci
+npm run test:mvp:cov:ci
+npm run validate:env-example
+npm run validate:guardrails
+npm run audit:check
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The E2E suite launches a disposable PostgreSQL container, runs the real initial
+migration, and exercises the application through HTTP. Docker must therefore
+be available. E2E coverage enforces a baseline of 80% statements/lines, 70%
+functions, and 65% branches. Pull requests merge unit and E2E reports before
+enforcing the existing 85% changed-line coverage guard.
 
-## Support
+## Useful commands
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```powershell
+npm run start:dev
+npm run api-key:list
+npm run api-key:revoke -- --id <api-key-id>
+npm run format
+```
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Private and unlicensed.

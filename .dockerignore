@@ -1,0 +1,10 @@
+.git
+.github
+.local
+coverage
+dist
+graphify-out
+node_modules
+postgres
+.env
+*.log

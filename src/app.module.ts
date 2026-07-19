@@ -22,7 +22,13 @@ import { ApiKeysModule } from '@/modules/api-keys/api-keys.module';
     TypeOrmModule.forRoot({
       ssl: envs.stage === 'prod',
       extra: {
-        ssl: envs.stage === 'prod' ? { rejectUnauthorized: false } : false,
+        ssl:
+          envs.stage === 'prod'
+            ? {
+                rejectUnauthorized: envs.dbSslRejectUnauthorized,
+                ...(envs.dbSslCa ? { ca: envs.dbSslCa } : {}),
+              }
+            : false,
       },
       type: 'postgres',
       host: envs.dbHost,
@@ -32,7 +38,7 @@ import { ApiKeysModule } from '@/modules/api-keys/api-keys.module';
       password: envs.dbPassword,
       autoLoadEntities: true,
       migrations: [__dirname + '/migrations/*{.ts,.js}'],
-      migrationsRun: envs.stage === 'prod',
+      migrationsRun: envs.stage === 'prod' || envs.stage === 'test',
       synchronize: envs.stage === 'dev',
     }),
     ApiKeysModule,

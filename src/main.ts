@@ -1,50 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { Logger } from '@nestjs/common';
 
 import { AppModule } from '@/app.module';
+import { configureApplication } from '@/configure-application';
 import { envs } from '@config/index';
 
 async function bootstrap() {
   const logger = new Logger('Main - Argos API');
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  app.enableCors({
-    origin: envs.clientUrl,
-    credentials: true,
-  });
-
-  app.setGlobalPrefix('api');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
-
-  const config = new DocumentBuilder()
-    .setTitle('Argos API')
-    .setDescription('API para gestión de productos y ventas')
-    .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'ApiKey',
-        description: 'Bearer token — API key generated via CLI scripts',
-      },
-      'api-key',
-    )
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  configureApplication(app, { clientUrl: envs.clientUrl });
 
   await app.listen(envs.port);
 
