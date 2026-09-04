@@ -6,26 +6,24 @@ draft/published lifecycle, API-key protected administration, and image assets.
 
 ## Requirements
 
-- Node.js 22 and npm
-- Docker (for the local PostgreSQL service and the E2E test suite)
+- Docker Desktop (recommended for local development)
+- Node.js 22 and npm only when running the API outside Docker
 
 ## Local setup
 
-```powershell
-npm ci
-Copy-Item .env.example .env
-docker compose up -d db
-npm run start:dev
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-The API uses the `/api` prefix. Swagger is available at `/docs` while the app
-is running. Local asset bytes are written below `.local/blog-assets`, which is
-ignored by Git.
+The API is available at <http://localhost:5001/api> and Swagger at
+<http://localhost:5001/docs>. The source tree is mounted for hot reload, while
+dependencies, PostgreSQL data, and uploaded assets stay in named Docker volumes.
 
 Create an administrative API key after PostgreSQL is running:
 
-```powershell
-npm run api-key:create -- --name studio --scopes blog:admin
+```bash
+docker compose exec api npm run api-key:create -- --name studio --scopes blog:admin
 ```
 
 The token is shown only once. Studio sends it as
@@ -100,6 +98,15 @@ migration, and exercises the application through HTTP. Docker must therefore
 be available. E2E coverage enforces a baseline of 80% statements/lines, 70%
 functions, and 65% branches. Pull requests merge unit and E2E reports before
 enforcing the existing 85% changed-line coverage guard.
+
+Build the minimized production image separately with:
+
+```bash
+docker build --target production -t argos:production .
+```
+
+It contains only compiled output and production dependencies, runs as the
+unprivileged `node` user, and uses `dumb-init` for correct signal handling.
 
 ## Useful commands
 

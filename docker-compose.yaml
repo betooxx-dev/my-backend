@@ -1,13 +1,65 @@
+name: argos
+
 services:
   db:
-    image: postgres:14.3
-    restart: "no"
-    ports:
-      - "5432:5432"
+    image: postgres:14.3-alpine
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    container_name: argos-database
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-argos}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - argos_postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      target: development
+    init: true
+    command: npm run start:dev
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      STAGE: dev
+      PORT: 5000
+      CLIENT_URL: http://localhost:3000
+      API_PUBLIC_URL: http://localhost:${ARGOS_HOST_PORT:-5001}/api
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-argos}
+      DB_SSL_REJECT_UNAUTHORIZED: "true"
+      JWT_SECRET: ${JWT_SECRET:-local_argos_development_secret_32_chars}
+      API_KEY_PREFIX: ${API_KEY_PREFIX:-argos_}
+      BLOG_ASSET_DRIVER: local
+      BLOG_ASSET_LOCAL_DIR: /app/.local/blog-assets
+      BLOG_ASSET_MAX_BYTES: ${BLOG_ASSET_MAX_BYTES:-8388608}
+    ports:
+      - "127.0.0.1:${ARGOS_HOST_PORT:-5001}:5000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/blog/posts?locale=es').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - .:/app
+      - argos_node_modules:/app/node_modules
+      - argos_assets:/app/.local
+
+volumes:
+  argos_assets:
+  argos_node_modules:
+  argos_postgres_data:
