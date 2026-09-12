@@ -16,7 +16,7 @@ export const envsSchema = joi
     API_KEY_PREFIX: joi
       .string()
       .pattern(/^[a-z0-9]+_$/)
-      .default('argos_'),
+      .default('mybackend_'),
     API_PUBLIC_URL: joi.when('STAGE', {
       is: 'prod',
       then: joi.string().uri({ allowRelative: false }).required(),

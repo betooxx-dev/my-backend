@@ -1,6 +1,6 @@
-# Argos
+# My Backend
 
-Argos is Alberto's personal NestJS API. Its first complete product surface is
+My Backend is Alberto's personal NestJS API. Its first complete product surface is
 the blog backend consumed by the personal website and Studio: Markdown posts,
 draft/published lifecycle, API-key protected administration, and image assets.
 
@@ -102,7 +102,7 @@ enforcing the existing 85% changed-line coverage guard.
 Build the minimized production image separately with:
 
 ```bash
-docker build --target production -t argos:production .
+docker build --target production -t my-backend:production .
 ```
 
 It contains only compiled output and production dependencies, runs as the

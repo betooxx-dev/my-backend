@@ -35,7 +35,7 @@ export function configureApplication(
   if (options.enableSwagger === false) return;
 
   const config = new DocumentBuilder()
-    .setTitle('Argos API')
+    .setTitle('My Backend API')
     .setDescription('API for Alberto personal tools and automations')
     .setVersion('1.0')
     .addBearerAuth(

@@ -6,7 +6,7 @@ const validEnv = {
   DB_PORT: 5432,
   DB_USER: 'postgres',
   DB_PASSWORD: 'postgres',
-  DB_NAME: 'argos',
+  DB_NAME: 'my_backend',
   JWT_SECRET: 'a'.repeat(32),
 };
 
@@ -18,7 +18,7 @@ describe('envsSchema', () => {
     expect(result.value as Record<string, unknown>).toMatchObject({
       STAGE: 'dev',
       PORT: 5000,
-      API_KEY_PREFIX: 'argos_',
+      API_KEY_PREFIX: 'mybackend_',
       DB_SSL_REJECT_UNAUTHORIZED: true,
     });
   });
@@ -35,7 +35,7 @@ describe('envsSchema', () => {
   it('rejects invalid API key prefixes', () => {
     const result = envsSchema.validate({
       ...validEnv,
-      API_KEY_PREFIX: 'Argos',
+      API_KEY_PREFIX: 'MyBackend',
     });
 
     expect(result.error?.message).toContain('API_KEY_PREFIX');

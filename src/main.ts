@@ -7,7 +7,7 @@ import { configureApplication } from '@/configure-application';
 import { envs } from '@config/index';
 
 async function bootstrap() {
-  const logger = new Logger('Main - Argos API');
+  const logger = new Logger('Main - My Backend API');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 

@@ -30,9 +30,9 @@ describe('Blogs API (e2e)', () => {
 
   beforeAll(async () => {
     postgres = await new PostgreSqlContainer('postgres:14.3')
-      .withDatabase('argos_e2e')
+      .withDatabase('my_backend_e2e')
       .start();
-    assetDirectory = await mkdtemp(join(tmpdir(), 'argos-assets-e2e-'));
+    assetDirectory = await mkdtemp(join(tmpdir(), 'my-backend-assets-e2e-'));
 
     Object.assign(process.env, {
       STAGE: 'test',
@@ -44,7 +44,7 @@ describe('Blogs API (e2e)', () => {
       DB_PASSWORD: postgres.getPassword(),
       DB_NAME: postgres.getDatabase(),
       JWT_SECRET: 'test-secret-that-is-at-least-32-characters-long',
-      API_KEY_PREFIX: 'argos_',
+      API_KEY_PREFIX: 'mybackend_',
       API_PUBLIC_URL: 'http://localhost/api',
       BLOG_ASSET_DRIVER: 'local',
       BLOG_ASSET_LOCAL_DIR: assetDirectory,
