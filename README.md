@@ -30,9 +30,10 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API is available at <http://localhost:5001/api> and Swagger at
-<http://localhost:5001/docs>. The source tree is mounted for hot reload, while
-dependencies, PostgreSQL data, and uploaded assets stay in named Docker volumes.
+The API is available at <http://localhost:5001/api> and, in dev/test, Swagger at
+<http://localhost:5001/docs>. Swagger is intentionally not registered when
+`STAGE=prod`. The source tree is mounted for hot reload, while dependencies,
+PostgreSQL data, and uploaded assets stay in named Docker volumes.
 
 Create an administrative API key after PostgreSQL is running:
 
