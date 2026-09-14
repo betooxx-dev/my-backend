@@ -46,6 +46,7 @@ The token is shown only once. Studio sends it as
 The header must contain exactly one non-whitespace token; malformed or
 ambiguous Bearer headers are rejected. Names are unique while active and can
 be reused after revocation; `--expires-days` must be a positive integer.
+Unknown scopes and duplicate scopes fail before any token is generated.
 
 Populate the local blog with bilingual demo posts and generated WebP covers:
 
