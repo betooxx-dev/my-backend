@@ -29,6 +29,15 @@ docker compose exec api npm run api-key:create -- --name studio --scopes blog:ad
 The token is shown only once. Studio sends it as
 `Authorization: Bearer <token>` for every `/api/blog/admin/*` request.
 
+Populate the local blog with bilingual demo posts and generated WebP covers:
+
+```bash
+docker compose exec api npm run blog:seed
+```
+
+The seed only runs with `STAGE=dev`. It is idempotent: rerunning it updates its
+known demo posts and reuses their generated assets instead of duplicating them.
+
 ## Blog contract
 
 - Posts are created as `draft`; only the explicit publish/unpublish endpoints
@@ -120,3 +129,42 @@ npm run format
 ## License
 
 Private and unlicensed.
+
+## Studio administration and categories
+
+Categories now live in `blog_categories`. The existing `category` string remains
+in the post contract and references the canonical name. A unique normalized key
+folds case, whitespace, accents and punctuation. Renames cascade through a foreign
+key; referenced categories cannot be deleted. Admin endpoints require `blog:admin`:
+
+- `GET/POST /api/blog/admin/categories`
+- `PATCH/DELETE /api/blog/admin/categories/:name` (URL-encoded name)
+- Category input: `{ name: string, position: integer }`, position 0–10000.
+
+Public `/api/blog/categories?locale=es|en` returns only categories with published
+posts, ordered by position and name. Tags remain per-post metadata.
+
+`1788560000000-CreateBlogCategories` backfills existing posts and merges equivalent
+category spellings. Production uses the existing migration runner; it does not
+require `synchronize`. Rollback preserves posts and their canonical category names,
+but cannot reconstruct pre-normalization spelling variants.
+
+For an **existing development database**, apply the migration before starting the
+updated API (from the sibling `my-website` directory):
+
+```sh
+docker compose stop api
+docker compose run --rm --no-deps api npm run blog:migrate-categories
+docker compose start api
+```
+
+The command is development-only and records the migration, so subsequent runs are
+no-ops. Fresh test/production schemas apply both migrations in order. The blog seed
+creates missing seed categories and remains idempotent.
+
+Public and admin posts return `coverAlt` from the joined cover asset. Missing
+legacy alt text is returned as an empty string. Lists load the cover relation in
+one query. Asset deletion checks exact `/blog/assets/:uuid` paths in Markdown,
+including reference links and encoded URLs. An isolated UUID is not a reference.
+A literal asset URL in a code example is conservatively treated as a reference.
+Saving references and deleting an asset use database row locks to prevent races.

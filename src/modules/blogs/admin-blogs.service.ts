@@ -1,3 +1,4 @@
+import { BlogCategoriesService } from './categories/blog-categories.service';
 import {
   ConflictException,
   Injectable,
@@ -28,6 +29,7 @@ export interface AdminBlogPostResponse {
   category: string;
   tags: string[];
   featured: boolean;
+  coverAlt: string;
   coverAssetId: string | null;
   cover: string | null;
   status: BlogPostStatus;
@@ -43,6 +45,7 @@ export class AdminBlogsService {
     @InjectRepository(BlogPost)
     private readonly posts: Repository<BlogPost>,
     private readonly assets: BlogAssetsService,
+    private readonly categories: BlogCategoriesService,
   ) {}
 
   async create(dto: CreateAdminBlogPostDto): Promise<AdminBlogPostResponse> {
@@ -61,14 +64,22 @@ export class AdminBlogsService {
       excerpt: dto.excerpt,
       contentMarkdown: dto.contentMarkdown ?? '',
       publishedAt: null,
-      category: dto.category ?? 'General',
+      category: await this.categories.resolve(dto.category ?? 'General'),
       tags: dto.tags ?? [],
       coverAssetId: dto.coverAssetId ?? null,
       featured: dto.featured ?? false,
       status: BlogPostStatus.DRAFT,
     });
 
-    return this.toResponse(await this.posts.save(post));
+    const saved = await this.assets.withReferences(
+      post.coverAssetId,
+      post.contentMarkdown,
+      (manager) =>
+        manager
+          .getRepository(BlogPost)
+          .save({ ...post, coverAsset: undefined }),
+    );
+    return this.findOne(saved.id);
   }
 
   async findOne(id: string): Promise<AdminBlogPostResponse> {
@@ -85,6 +96,7 @@ export class AdminBlogsService {
     const posts = await this.posts.find({
       where,
       order: { updatedAt: 'DESC' },
+      relations: { coverAsset: true },
     });
     return posts.map((post) => this.toResponse(post));
   }
@@ -120,7 +132,9 @@ export class AdminBlogsService {
       ...(dto.contentMarkdown === undefined
         ? {}
         : { contentMarkdown: dto.contentMarkdown }),
-      ...(dto.category === undefined ? {} : { category: dto.category }),
+      ...(dto.category === undefined
+        ? {}
+        : { category: await this.categories.resolve(dto.category) }),
       ...(dto.tags === undefined ? {} : { tags: dto.tags }),
       ...(dto.featured === undefined ? {} : { featured: dto.featured }),
       ...(dto.coverAssetId === undefined
@@ -132,7 +146,15 @@ export class AdminBlogsService {
       this.assertPublishable(post);
     }
 
-    return this.toResponse(await this.posts.save(post));
+    const saved = await this.assets.withReferences(
+      post.coverAssetId,
+      post.contentMarkdown,
+      (manager) =>
+        manager
+          .getRepository(BlogPost)
+          .save({ ...post, coverAsset: undefined }),
+    );
+    return this.findOne(saved.id);
   }
 
   async publish(id: string): Promise<AdminBlogPostResponse> {
@@ -145,14 +167,30 @@ export class AdminBlogsService {
     }
     post.status = BlogPostStatus.PUBLISHED;
     post.publishedAt ??= new Date();
-    return this.toResponse(await this.posts.save(post));
+    const saved = await this.assets.withReferences(
+      post.coverAssetId,
+      post.contentMarkdown,
+      (manager) =>
+        manager
+          .getRepository(BlogPost)
+          .save({ ...post, coverAsset: undefined }),
+    );
+    return this.findOne(saved.id);
   }
 
   async unpublish(id: string): Promise<AdminBlogPostResponse> {
     const post = await this.findEntity(id);
     post.status = BlogPostStatus.DRAFT;
     post.publishedAt = null;
-    return this.toResponse(await this.posts.save(post));
+    const saved = await this.assets.withReferences(
+      post.coverAssetId,
+      post.contentMarkdown,
+      (manager) =>
+        manager
+          .getRepository(BlogPost)
+          .save({ ...post, coverAsset: undefined }),
+    );
+    return this.findOne(saved.id);
   }
 
   async delete(id: string): Promise<{ deleted: true }> {
@@ -162,7 +200,10 @@ export class AdminBlogsService {
   }
 
   private async findEntity(id: string): Promise<BlogPost> {
-    const post = await this.posts.findOne({ where: { id } });
+    const post = await this.posts.findOne({
+      where: { id },
+      relations: { coverAsset: true },
+    });
     if (!post) throw new NotFoundException('Blog post not found');
     return post;
   }
@@ -194,6 +235,7 @@ export class AdminBlogsService {
       tags: post.tags,
       featured: post.featured,
       coverAssetId: post.coverAssetId,
+      coverAlt: post.coverAsset?.altText ?? '',
       cover: post.coverAssetId ? blogAssetPublicUrl(post.coverAssetId) : null,
       status: post.status,
       publishedAt: post.publishedAt?.toISOString() ?? null,

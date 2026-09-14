@@ -32,6 +32,7 @@
     "api-key:create": "ts-node -r tsconfig-paths/register scripts/api-keys/create.ts",
     "api-key:list": "ts-node -r tsconfig-paths/register scripts/api-keys/list.ts",
     "api-key:revoke": "ts-node -r tsconfig-paths/register scripts/api-keys/revoke.ts",
+    "blog:seed": "ts-node -r tsconfig-paths/register scripts/blogs/seed.ts",
     "audit": "npm audit --audit-level=moderate",
     "audit:low-warn": "node scripts/guardrails/audit-low-warn.mjs",
     "audit:check": "npm run audit:low-warn && npm run audit",
@@ -42,7 +43,8 @@
     "validate:env-access": "node scripts/guardrails/validate-env-access.mjs",
     "validate:env-example": "node scripts/guardrails/validate-env-example.mjs",
     "validate:typeorm-safety": "node scripts/guardrails/validate-typeorm-safety.mjs",
-    "validate:guardrails": "npm run validate:file-size && npm run validate:migrations && npm run validate:controller-security && npm run validate:env-access && npm run validate:env-example && npm run validate:typeorm-safety"
+    "validate:guardrails": "npm run validate:file-size && npm run validate:migrations && npm run validate:controller-security && npm run validate:env-access && npm run validate:env-example && npm run validate:typeorm-safety",
+    "blog:migrate-categories": "ts-node -r tsconfig-paths/register scripts/blogs/migrate-categories.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1090.0",

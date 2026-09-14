@@ -1,3 +1,4 @@
+import { markdownAssetIds } from './markdown-asset-references';
 import {
   BadRequestException,
   ConflictException,
@@ -11,7 +12,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { Readable } from 'node:stream';
 import sharp from 'sharp';
-import { Like, Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 
 import { envs } from '@config/index';
 import { BlogAsset, BlogPost } from '../entities';
@@ -137,22 +138,73 @@ export class BlogAssetsService {
     await this.findEntity(id);
   }
 
+  async updateAltText(id: string, altText: string): Promise<void> {
+    const result = await this.assets.update({ id }, { altText });
+    if (!result.affected) throw new NotFoundException('Blog asset not found');
+  }
+
   async findAll(): Promise<BlogAssetResponse[]> {
     const assets = await this.assets.find({ order: { createdAt: 'DESC' } });
     return assets.map((asset) => this.toResponse(asset));
   }
 
-  async delete(id: string): Promise<{ deleted: true }> {
-    const asset = await this.findEntity(id);
-    const references = await this.posts.count({
-      where: [{ coverAssetId: id }, { contentMarkdown: Like(`%${id}%`) }],
+  // Serialize deletion against post saves, including Markdown references which
+  // have no foreign key. The lock is database-wide, also across API instances.
+  async withReferences<T>(
+    coverId: string | null,
+    markdown: string,
+    save: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.assets.manager.transaction(async (manager) => {
+      const ids = markdownAssetIds(markdown);
+      if (coverId) ids.add(coverId.toLowerCase());
+      for (const id of [...ids].sort()) {
+        if (
+          !(await manager
+            .getRepository(BlogAsset)
+            .createQueryBuilder('asset')
+            .where('asset.id = :id', { id })
+            .setLock('pessimistic_read')
+            .getOne())
+        ) {
+          throw new ConflictException(
+            'Una imagen seleccionada ya no está disponible. Selecciona otra imagen o retira su enlace del contenido.',
+          );
+        }
+      }
+      return save(manager);
     });
-    if (references > 0) {
-      throw new ConflictException('Blog asset is referenced by a post');
-    }
+  }
 
-    const storageKey = asset.storageKey;
-    await this.assets.remove(asset);
+  async delete(id: string): Promise<{ deleted: true }> {
+    const assetId = id.toLowerCase();
+    const storageKey = await this.assets.manager.transaction(
+      async (manager) => {
+        const assets = manager.getRepository(BlogAsset);
+        const asset = await assets
+          .createQueryBuilder('asset')
+          .where('asset.id = :id', { id: assetId })
+          .setLock('pessimistic_write')
+          .getOne();
+        if (!asset) throw new NotFoundException('La imagen ya no existe.');
+        const posts = await manager.getRepository(BlogPost).find({
+          select: { coverAssetId: true, contentMarkdown: true },
+        });
+        if (
+          posts.some(
+            (post) =>
+              post.coverAssetId?.toLowerCase() === assetId ||
+              markdownAssetIds(post.contentMarkdown).has(assetId),
+          )
+        ) {
+          throw new ConflictException(
+            'La imagen está siendo utilizada por una publicación. Retírala de la portada o del contenido y guarda los cambios antes de eliminarla.',
+          );
+        }
+        await assets.remove(asset);
+        return asset.storageKey;
+      },
+    );
     await this.storage.delete(storageKey).catch((error) => {
       this.logger.error(
         `Failed to remove unreferenced asset bytes ${storageKey}`,

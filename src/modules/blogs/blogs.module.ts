@@ -1,3 +1,6 @@
+import { BlogCategory } from './categories/blog-category.entity';
+import { BlogCategoriesService } from './categories/blog-categories.service';
+import { BlogCategoriesController } from './categories/blog-categories.controller';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -9,9 +12,16 @@ import { BlogAssetsModule } from './assets/blog-assets.module';
 import { BlogPost } from './entities';
 
 @Module({
-  imports: [BlogAssetsModule, TypeOrmModule.forFeature([BlogPost])],
-  controllers: [BlogsController, AdminBlogsController],
-  providers: [BlogsService, AdminBlogsService],
+  imports: [
+    BlogAssetsModule,
+    TypeOrmModule.forFeature([BlogPost, BlogCategory]),
+  ],
+  controllers: [
+    BlogsController,
+    AdminBlogsController,
+    BlogCategoriesController,
+  ],
+  providers: [BlogsService, AdminBlogsService, BlogCategoriesService],
   exports: [BlogsService],
 })
 export class BlogsModule {}
