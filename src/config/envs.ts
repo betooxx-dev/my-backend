@@ -16,6 +16,8 @@ interface EnvVars {
   DB_SSL_CA?: string;
   JWT_SECRET: string;
   API_KEY_PREFIX: string;
+  THROTTLE_TTL_MS: number;
+  THROTTLE_LIMIT: number;
   API_PUBLIC_URL: string;
   BLOG_ASSET_DRIVER: 'local' | 'r2';
   BLOG_ASSET_LOCAL_DIR: string;
@@ -49,6 +51,8 @@ export const envs = {
   dbSslCa: envVars.DB_SSL_CA?.replace(/\\n/g, '\n'),
   jwtSecret: envVars.JWT_SECRET,
   apiKeyPrefix: envVars.API_KEY_PREFIX,
+  throttleTtlMs: envVars.THROTTLE_TTL_MS,
+  throttleLimit: envVars.THROTTLE_LIMIT,
   apiPublicUrl: envVars.API_PUBLIC_URL.replace(/\/$/, ''),
   blogAssetDriver: envVars.BLOG_ASSET_DRIVER,
   blogAssetLocalDir: envVars.BLOG_ASSET_LOCAL_DIR,

@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 interface ConfigureApplicationOptions {
   clientUrl: string;
@@ -11,6 +12,9 @@ export function configureApplication(
   app: NestExpressApplication,
   options: ConfigureApplicationOptions,
 ): void {
+  app.set('trust proxy', false);
+  app.use(helmet());
+
   app.enableCors({
     origin: options.clientUrl,
     credentials: true,

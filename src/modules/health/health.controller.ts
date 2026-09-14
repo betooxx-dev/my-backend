@@ -4,10 +4,12 @@ import {
   HealthCheckService,
   TypeOrmHealthIndicator,
 } from '@nestjs/terminus';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { Public } from '@/modules/api-keys/decorators/public.decorator';
 
 @Public()
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(

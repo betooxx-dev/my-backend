@@ -40,6 +40,13 @@ serving, while `/api/health/ready` reports that PostgreSQL is reachable. The
 Compose healthcheck uses readiness; neither endpoint returns dependency
 details or secrets.
 
+HTTP throttling defaults to 120 requests per 60 seconds per client IP. Set
+`THROTTLE_LIMIT` and `THROTTLE_TTL_MS` to positive integers for local tuning;
+health endpoints are excluded so an orchestrator can observe failures. The
+Express `trust proxy` setting remains disabled by default; enable and scope it
+explicitly at the deployment boundary only when a trusted reverse proxy is
+present.
+
 Create an administrative API key after PostgreSQL is running:
 
 ```bash
