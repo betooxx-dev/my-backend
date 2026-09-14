@@ -2,6 +2,7 @@ import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -11,8 +12,33 @@ import { configureApplication } from '../src/configure-application';
 describe('Health endpoints (e2e)', () => {
   let app: NestExpressApplication;
   let postgres: StartedPostgreSqlContainer;
+  let accessLog: jest.SpyInstance;
+  let errorLog: jest.SpyInstance;
+
+  function findEvent(
+    logger: jest.SpyInstance,
+    eventName: string,
+    requestId: string,
+  ): Record<string, unknown> | undefined {
+    return logger.mock.calls.flatMap((call: unknown[]) => {
+      const [message] = call;
+      if (typeof message !== 'string') return [];
+
+      try {
+        const event = JSON.parse(message) as Record<string, unknown>;
+        return event.event === eventName && event.requestId === requestId
+          ? [event]
+          : [];
+      } catch {
+        return [];
+      }
+    })[0];
+  }
 
   beforeAll(async () => {
+    accessLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
     postgres = await new PostgreSqlContainer('postgres:14.3')
       .withDatabase('my_backend_health_e2e')
       .start();
@@ -51,30 +77,48 @@ describe('Health endpoints (e2e)', () => {
   afterAll(async () => {
     await app?.close();
     await postgres?.stop();
+    accessLog?.mockRestore();
+    errorLog?.mockRestore();
   });
 
   it('returns safe public 200 responses while PostgreSQL is healthy', async () => {
     const api = request(app.getHttpServer());
-    const live = await api.get('/api/health/live').expect(200);
+    const requestId = '550e8400-e29b-41d4-a716-446655440000';
+    const live = await api
+      .get('/api/health/live')
+      .set('x-request-id', requestId)
+      .expect(200);
     const ready = await api.get('/api/health/ready').expect(200);
 
     expect(live.body).toEqual({ success: true, data: { status: 'ok' } });
+    expect(live.headers['x-request-id']).toBe(requestId);
     expect(ready.body).toEqual({ success: true, data: { status: 'ok' } });
     expect(JSON.stringify(ready.body)).not.toMatch(
       /password|postgres|secret|sql/i,
     );
+
+    expect(findEvent(accessLog, 'http_request', requestId)).toMatchObject({
+      method: 'GET',
+      path: '/api/health/live',
+      statusCode: 200,
+    });
   });
 
   it('keeps liveness at 200 and returns a safe 503 when PostgreSQL is unavailable', async () => {
     await postgres.stop();
     const api = request(app.getHttpServer());
+    const requestId = '550e8400-e29b-41d4-a716-446655440001';
 
     const live = await api.get('/api/health/live').expect(200);
-    const ready = await api.get('/api/health/ready').expect(503);
+    const ready = await api
+      .get('/api/health/ready')
+      .set('x-request-id', requestId)
+      .expect(503);
 
     expect(live.body).toEqual({ success: true, data: { status: 'ok' } });
     expect(ready.body).toMatchObject({
       success: false,
+      requestId,
       error: {
         statusCode: 503,
         message: 'Readiness check failed',
@@ -83,5 +127,14 @@ describe('Health endpoints (e2e)', () => {
     expect(JSON.stringify(ready.body)).not.toMatch(
       /password|postgres|secret|sql|stack/i,
     );
+    expect(findEvent(accessLog, 'http_request', requestId)).toMatchObject({
+      path: '/api/health/ready',
+      statusCode: 503,
+    });
+    expect(findEvent(errorLog, 'http_error', requestId)).toMatchObject({
+      path: '/api/health/ready',
+      statusCode: 503,
+      errorType: 'ServiceUnavailableException',
+    });
   });
 });
