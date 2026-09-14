@@ -1,4 +1,5 @@
 import { BlogCategory } from './categories/blog-category.entity';
+import { BlogCategoryBootstrap } from './categories/blog-category-bootstrap';
 import { BlogCategoriesService } from './categories/blog-categories.service';
 import { BlogCategoriesController } from './categories/blog-categories.controller';
 import { Module } from '@nestjs/common';
@@ -21,7 +22,12 @@ import { BlogPost } from './entities';
     AdminBlogsController,
     BlogCategoriesController,
   ],
-  providers: [BlogsService, AdminBlogsService, BlogCategoriesService],
+  providers: [
+    BlogsService,
+    AdminBlogsService,
+    BlogCategoriesService,
+    BlogCategoryBootstrap,
+  ],
   exports: [BlogsService],
 })
 export class BlogsModule {}
