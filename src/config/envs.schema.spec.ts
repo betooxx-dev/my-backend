@@ -20,6 +20,8 @@ describe('envsSchema', () => {
       PORT: 5000,
       API_KEY_PREFIX: 'mybackend_',
       DB_SSL_REJECT_UNAUTHORIZED: true,
+      THROTTLE_TTL_MS: 60000,
+      THROTTLE_LIMIT: 120,
     });
   });
 
@@ -39,6 +41,20 @@ describe('envsSchema', () => {
     });
 
     expect(result.error?.message).toContain('API_KEY_PREFIX');
+  });
+
+  it('rejects non-positive or non-integer throttling settings', () => {
+    const invalidTtl = envsSchema.validate({
+      ...validEnv,
+      THROTTLE_TTL_MS: 0,
+    });
+    const invalidLimit = envsSchema.validate({
+      ...validEnv,
+      THROTTLE_LIMIT: 1.5,
+    });
+
+    expect(invalidTtl.error?.message).toContain('THROTTLE_TTL_MS');
+    expect(invalidLimit.error?.message).toContain('THROTTLE_LIMIT');
   });
 
   it('requires explicit R2 storage and a public API URL in production', () => {

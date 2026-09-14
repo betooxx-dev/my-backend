@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { envs, envsSchema } from '@config/index';
@@ -19,6 +20,14 @@ import { HealthModule } from '@/modules/health/health.module';
         abortEarly: true,
         allowUnknown: true,
       },
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: envs.throttleTtlMs,
+          limit: envs.throttleLimit,
+        },
+      ],
     }),
     TypeOrmModule.forRoot({
       ssl: envs.stage === 'prod',
@@ -47,6 +56,7 @@ import { HealthModule } from '@/modules/health/health.module';
     HealthModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],

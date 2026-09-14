@@ -17,6 +17,8 @@ export const envsSchema = joi
       .string()
       .pattern(/^[a-z0-9]+_$/)
       .default('mybackend_'),
+    THROTTLE_TTL_MS: joi.number().integer().min(1).default(60_000),
+    THROTTLE_LIMIT: joi.number().integer().min(1).default(120),
     API_PUBLIC_URL: joi.when('STAGE', {
       is: 'prod',
       then: joi.string().uri({ allowRelative: false }).required(),
