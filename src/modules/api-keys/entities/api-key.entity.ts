@@ -7,6 +7,10 @@ import {
 } from 'typeorm';
 
 @Entity('api_keys')
+@Index('IDX_api_keys_active_name', ['name'], {
+  unique: true,
+  where: '"revokedAt" IS NULL',
+})
 export class ApiKey {
   @PrimaryGeneratedColumn('uuid')
   id: string;
