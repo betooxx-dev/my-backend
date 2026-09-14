@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { BlogLocale, BlogPostStatus } from './dto';
 import { BlogPost } from './entities';
@@ -38,7 +38,7 @@ export class BlogsService {
   async findPublishedByLocale(locale: BlogLocale): Promise<BlogPostResponse[]> {
     const posts = await this.posts.find({
       where: { locale, status: BlogPostStatus.PUBLISHED },
-      order: { publishedAt: 'DESC' },
+      order: { publishedAt: 'DESC', id: 'ASC' },
       relations: { coverAsset: true },
     });
     return posts.map((post) => this.toResponse(post));
@@ -52,8 +52,15 @@ export class BlogsService {
   }
 
   async getAllTags(locale: BlogLocale): Promise<string[]> {
-    const posts = await this.findPublishedByLocale(locale);
-    return Array.from(new Set(posts.flatMap((post) => post.tags))).sort();
+    const rows = await this.posts.query<{ tag: string }[]>(
+      `SELECT DISTINCT tag.value AS "tag"
+       FROM "blog_posts" AS post
+       CROSS JOIN LATERAL unnest(post."tags") AS tag(value)
+       WHERE post."locale" = $1 AND post."status" = $2
+       ORDER BY "tag" ASC`,
+      [locale, BlogPostStatus.PUBLISHED],
+    );
+    return rows.map((row) => row.tag);
   }
 
   async getAllCategories(locale: BlogLocale): Promise<string[]> {
@@ -78,26 +85,28 @@ export class BlogsService {
     slug: string,
   ): Promise<BlogPostResponse[]> {
     const post = await this.findPublishedEntity(locale, slug);
-    const candidates = await this.posts.find({
-      where: {
-        id: Not(post.id),
-        locale,
+    const sharedTagsExpression = `cardinality(ARRAY(
+      SELECT candidate_tag.value
+      FROM unnest(candidate.tags) AS candidate_tag(value)
+      WHERE candidate_tag.value = ANY(:sourceTags)
+    ))`;
+    const candidates = await this.posts
+      .createQueryBuilder('candidate')
+      .leftJoinAndSelect('candidate.coverAsset', 'coverAsset')
+      .where('candidate.id != :id', { id: post.id })
+      .andWhere('candidate.locale = :locale', { locale })
+      .andWhere('candidate.status = :status', {
         status: BlogPostStatus.PUBLISHED,
-      },
-      order: { publishedAt: 'DESC' },
-      relations: { coverAsset: true },
-    });
-    const tags = new Set(post.tags);
+      })
+      .andWhere(`${sharedTagsExpression} > 0`, { sourceTags: post.tags })
+      .addSelect(sharedTagsExpression, 'sharedTags')
+      .orderBy('"sharedTags"', 'DESC')
+      .addOrderBy('candidate.publishedAt', 'DESC')
+      .addOrderBy('candidate.id', 'ASC')
+      .limit(3)
+      .getMany();
 
-    return candidates
-      .map((candidate) => ({
-        candidate,
-        sharedTags: candidate.tags.filter((tag) => tags.has(tag)).length,
-      }))
-      .filter(({ sharedTags }) => sharedTags > 0)
-      .sort((left, right) => right.sharedTags - left.sharedTags)
-      .slice(0, 3)
-      .map(({ candidate }) => this.toResponse(candidate));
+    return candidates.map((candidate) => this.toResponse(candidate));
   }
 
   private async findPublishedEntity(
