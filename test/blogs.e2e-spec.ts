@@ -510,6 +510,75 @@ describe('Blogs API (e2e)', () => {
       });
   });
 
+  it('limits related posts in the database and keeps repeated results stable', async () => {
+    const assets = await request(app.getHttpServer())
+      .get('/api/blog/admin/assets')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    const coverAssetId = assets.body.data[0].id as string;
+
+    const source = await request(app.getHttpServer())
+      .post('/api/blog/admin/posts')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        locale: 'en',
+        slug: 'query-source',
+        title: 'Query source',
+        excerpt: 'Query source excerpt.',
+        contentMarkdown: '# Query source\n\nPublished content.',
+        category: 'Engineering',
+        tags: ['query-source'],
+        coverAssetId,
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/api/blog/admin/posts/${source.body.data.id as string}/publish`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+
+    for (const slug of [
+      'query-related-a',
+      'query-related-b',
+      'query-related-c',
+      'query-related-d',
+    ]) {
+      const candidate = await request(app.getHttpServer())
+        .post('/api/blog/admin/posts')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          locale: 'en',
+          slug,
+          title: slug,
+          excerpt: `${slug} excerpt.`,
+          contentMarkdown: `# ${slug}\n\nPublished content.`,
+          category: 'Engineering',
+          tags: ['query-source'],
+          coverAssetId,
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(
+          `/api/blog/admin/posts/${candidate.body.data.id as string}/publish`,
+        )
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(201);
+    }
+
+    const first = await request(app.getHttpServer())
+      .get('/api/blog/posts/en/query-source/related')
+      .expect(200);
+    const second = await request(app.getHttpServer())
+      .get('/api/blog/posts/en/query-source/related')
+      .expect(200);
+
+    expect(first.body.data).toHaveLength(3);
+    expect(first.body.data.map((post: { slug: string }) => post.slug)).toEqual(
+      second.body.data.map((post: { slug: string }) => post.slug),
+    );
+  });
+
   it('keeps published posts valid and preserves their publication timestamp on retries', async () => {
     const posts = await request(app.getHttpServer())
       .get('/api/blog/admin/posts?locale=en&status=published')

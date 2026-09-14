@@ -95,15 +95,22 @@ export class AdminBlogsService {
     if (query.status) where.status = query.status;
     const posts = await this.posts.find({
       where,
-      order: { updatedAt: 'DESC' },
+      order: { updatedAt: 'DESC', id: 'ASC' },
       relations: { coverAsset: true },
     });
     return posts.map((post) => this.toResponse(post));
   }
 
   async getTags(locale: BlogLocale): Promise<string[]> {
-    const posts = await this.posts.find({ where: { locale } });
-    return Array.from(new Set(posts.flatMap((post) => post.tags))).sort();
+    const rows = await this.posts.query<{ tag: string }[]>(
+      `SELECT DISTINCT tag.value AS "tag"
+       FROM "blog_posts" AS post
+       CROSS JOIN LATERAL unnest(post."tags") AS tag(value)
+       WHERE post."locale" = $1
+       ORDER BY "tag" ASC`,
+      [locale],
+    );
+    return rows.map((row) => row.tag);
   }
 
   async update(
