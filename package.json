@@ -37,6 +37,7 @@
     "api-key:list": "ts-node -r tsconfig-paths/register scripts/api-keys/list.ts",
     "api-key:revoke": "ts-node -r tsconfig-paths/register scripts/api-keys/revoke.ts",
     "blog:seed": "ts-node -r tsconfig-paths/register scripts/blogs/seed.ts",
+    "blog:reconcile-assets": "ts-node -r tsconfig-paths/register scripts/blogs/reconcile-assets.ts",
     "audit": "npm audit --audit-level=moderate",
     "audit:low-warn": "node scripts/guardrails/audit-low-warn.mjs",
     "audit:check": "npm run audit:low-warn && npm run audit",

@@ -1,12 +1,18 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import type { HttpRequest, HttpResponse, RequestHandler } from '@smithy/types';
 import { Readable } from 'node:stream';
 
-import { createR2S3Client, R2BlogAssetStorage } from './r2-blog-asset.storage';
+import {
+  createR2CommandSender,
+  createR2S3Client,
+  R2BlogAssetStorage,
+} from './r2-blog-asset.storage';
+import { toS3ChecksumSha256 } from './s3-checksum';
 
 describe('R2BlogAssetStorage', () => {
   it('implements the storage contract through the S3-compatible client', async () => {
@@ -97,5 +103,94 @@ describe('R2BlogAssetStorage', () => {
     expect(serializedHeaders).not.toHaveProperty(
       'x-amz-sdk-checksum-algorithm',
     );
+  });
+
+  it('creates a command sender for the real S3 client path', async () => {
+    const requestHandler: RequestHandler<HttpRequest, HttpResponse> = {
+      handle: jest.fn(() =>
+        Promise.resolve({
+          response: {
+            statusCode: 200,
+            headers: {},
+          },
+        }),
+      ),
+    };
+    const options = {
+      accountId: 'account',
+      bucket: 'blog-assets',
+      accessKeyId: 'access-key',
+      secretAccessKey: 'secret-key',
+    };
+    const sender = createR2CommandSender(options, requestHandler);
+
+    await sender.send(
+      new ListObjectsV2Command({ Bucket: 'blog-assets', Prefix: 'blog/' }),
+    );
+
+    expect(requestHandler.handle).toHaveBeenCalledTimes(1);
+  });
+
+  it('builds the default sender when no client is injected', () => {
+    const storage = new R2BlogAssetStorage({
+      accountId: 'account',
+      bucket: 'blog-assets',
+      accessKeyId: 'access-key',
+      secretAccessKey: 'secret-key',
+    });
+
+    expect(storage).toBeInstanceOf(R2BlogAssetStorage);
+  });
+
+  it('converts the internal hex digest to the S3 ChecksumSHA256 format', () => {
+    expect(
+      toS3ChecksumSha256(
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+      ),
+    ).toBe('ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=');
+  });
+
+  it('lists R2 objects through paginated ListObjectsV2 responses', async () => {
+    const lastModified = new Date('2026-09-14T12:00:00.000Z');
+    const client = {
+      send: jest.fn().mockResolvedValue({
+        Contents: [
+          { Key: 'blog/asset.png', Size: 42, LastModified: lastModified },
+        ],
+        IsTruncated: true,
+        NextContinuationToken: 'next-page',
+      }),
+    };
+    const storage = new R2BlogAssetStorage(
+      {
+        accountId: 'account',
+        bucket: 'blog-assets',
+        accessKeyId: 'access-key',
+        secretAccessKey: 'secret-key',
+      },
+      client,
+    );
+
+    const page = await storage.list('blog/', 'previous-page', 10);
+
+    expect(page).toEqual({
+      objects: [
+        {
+          key: 'blog/asset.png',
+          sizeBytes: 42,
+          lastModified,
+        },
+      ],
+      nextContinuationToken: 'next-page',
+    });
+    expect(client.send).toHaveBeenCalledWith(expect.any(ListObjectsV2Command));
+    const calls = client.send.mock.calls as unknown[][];
+    const command = calls[0]?.[0] as ListObjectsV2Command;
+    expect(command.input).toEqual({
+      Bucket: 'blog-assets',
+      Prefix: 'blog/',
+      ContinuationToken: 'previous-page',
+      MaxKeys: 10,
+    });
   });
 });
