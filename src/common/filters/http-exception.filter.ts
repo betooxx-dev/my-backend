@@ -6,7 +6,10 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+
+import type { RequestWithId } from '../interfaces/request-with-id.interface';
+import { resolveRequestId } from '../request-id';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -15,7 +18,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithId>();
+    const requestId =
+      request.requestId ?? resolveRequestId(request.headers?.['x-request-id']);
+
+    if (!request.requestId) {
+      request.requestId = requestId;
+      response.setHeader('X-Request-Id', requestId);
+    }
 
     const boundaryStatus = this.getBoundaryStatus(exception);
     const status =
@@ -32,8 +42,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (status >= 500) {
       this.logger.error(
-        `${request.method} ${request.originalUrl}`,
-        exception instanceof Error ? exception.stack : String(exception),
+        JSON.stringify({
+          event: 'http_error',
+          requestId,
+          method: request.method,
+          path: request.path,
+          statusCode: status,
+          errorType:
+            exception instanceof Error
+              ? exception.constructor.name
+              : 'UnknownError',
+        }),
       );
     }
 
@@ -41,6 +60,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       success: false,
       error,
       path: request.originalUrl,
+      requestId,
       timestamp: new Date().toISOString(),
     });
   }
