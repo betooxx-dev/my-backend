@@ -5,17 +5,24 @@ import { Logger } from '@nestjs/common';
 import { AppModule } from '@/app.module';
 import { configureApplication } from '@/configure-application';
 import { envs } from '@config/index';
+import { getSwaggerStartupMessage } from '@config/swagger';
 
-async function bootstrap() {
+export async function bootstrap() {
   const logger = new Logger('Main - My Backend API');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  configureApplication(app, { clientUrl: envs.clientUrl });
+  const enableSwagger = envs.stage !== 'prod';
+  configureApplication(app, {
+    clientUrl: envs.clientUrl,
+    enableSwagger,
+  });
 
   await app.listen(envs.port);
 
   logger.log(`API is running on port: ${envs.port}`);
-  logger.log(`Swagger docs available at: http://localhost:${envs.port}/docs`);
+  const swaggerStartupMessage = getSwaggerStartupMessage(envs.stage, envs.port);
+  if (swaggerStartupMessage) logger.log(swaggerStartupMessage);
 }
-void bootstrap();
+
+if (require.main === module) void bootstrap();
