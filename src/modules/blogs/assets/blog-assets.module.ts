@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { envs } from '@config/index';
 import { BlogAsset, BlogPost } from '../entities';
+import { AssetReconciler } from './asset-reconciler';
 import {
   AdminBlogAssetsController,
   PublicBlogAssetsController,
@@ -17,6 +18,7 @@ import { R2BlogAssetStorage } from './r2-blog-asset.storage';
   controllers: [AdminBlogAssetsController, PublicBlogAssetsController],
   providers: [
     BlogAssetsService,
+    AssetReconciler,
     {
       provide: BLOG_ASSET_STORAGE,
       useFactory: () => {
@@ -41,6 +43,6 @@ import { R2BlogAssetStorage } from './r2-blog-asset.storage';
       },
     },
   ],
-  exports: [BlogAssetsService],
+  exports: [BlogAssetsService, AssetReconciler, BLOG_ASSET_STORAGE],
 })
 export class BlogAssetsModule {}

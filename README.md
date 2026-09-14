@@ -119,6 +119,22 @@ the four R2 values is missing. Production database TLS verifies certificates
 by default; set `DB_SSL_CA` to the provider CA (with escaped `\n` line breaks)
 when it is not already trusted by the runtime.
 
+### Asset reconciliation
+
+`npm run blog:reconcile-assets` performs a paginated comparison of `blog/*`
+storage keys against `blog_assets`. It is a dry-run by default and reports
+orphaned objects, database rows without an object, and objects protected by the
+default 24-hour safety window. Add `--delete` only when deletion of eligible
+old orphan objects is explicitly intended; database rows are never deleted.
+
+The application stores SHA-256 as lowercase hexadecimal. An S3
+`ChecksumSHA256` header requires the 32-byte digest encoded as standard Base64;
+the conversion is tested, but the R2 adapter deliberately does not send that
+header because Cloudflare R2 documents SHA-256 as unsupported for
+`FULL_OBJECT` uploads. No R2 development account was used here, so a real R2
+smoke remains pending before enabling checksum headers or claiming that
+capability.
+
 ## Validation
 
 ```powershell

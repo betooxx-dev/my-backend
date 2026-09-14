@@ -2,15 +2,25 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   GetObjectCommandOutput,
+  ListObjectsV2Command,
+  ListObjectsV2CommandOutput,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import type { S3ClientConfig } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 
-import { BlogAssetStorage, PutBlogAssetInput } from './blog-asset-storage';
+import type {
+  BlogAssetStorage,
+  BlogAssetStoragePage,
+  PutBlogAssetInput,
+} from './blog-asset-storage';
 
-type R2Command = PutObjectCommand | GetObjectCommand | DeleteObjectCommand;
+type R2Command =
+  | PutObjectCommand
+  | GetObjectCommand
+  | DeleteObjectCommand
+  | ListObjectsV2Command;
 
 export interface R2CommandSender {
   send(command: R2Command): Promise<unknown>;
@@ -21,6 +31,16 @@ export interface R2BlogAssetStorageOptions {
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+}
+
+export function createR2CommandSender(
+  options: R2BlogAssetStorageOptions,
+  requestHandler?: S3ClientConfig['requestHandler'],
+): R2CommandSender {
+  const s3 = createR2S3Client(options, requestHandler);
+  return {
+    send: (command) => s3.send(command as never),
+  };
 }
 
 export function createR2S3Client(
@@ -51,13 +71,13 @@ export class R2BlogAssetStorage implements BlogAssetStorage {
       return;
     }
 
-    const s3 = createR2S3Client(options);
-    this.client = {
-      send: (command) => s3.send(command),
-    };
+    this.client = createR2CommandSender(options);
   }
 
   async put(input: PutBlogAssetInput): Promise<void> {
+    // Keep the application checksum in PostgreSQL. Cloudflare R2 documents
+    // SHA-256 as unsupported for FULL_OBJECT uploads, so do not send the
+    // S3 ChecksumSHA256 header until a development R2 smoke proves support.
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.options.bucket,
@@ -85,5 +105,45 @@ export class R2BlogAssetStorage implements BlogAssetStorage {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.options.bucket, Key: key }),
     );
+  }
+
+  async list(
+    prefix = 'blog/',
+    continuationToken?: string,
+    maxKeys = 1000,
+  ): Promise<BlogAssetStoragePage> {
+    if (!Number.isSafeInteger(maxKeys) || maxKeys < 1) {
+      throw new Error('Storage page size must be positive');
+    }
+
+    const result = (await this.client.send(
+      new ListObjectsV2Command({
+        Bucket: this.options.bucket,
+        Prefix: prefix,
+        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+        MaxKeys: maxKeys,
+      }),
+    )) as ListObjectsV2CommandOutput;
+
+    return {
+      objects: (result.Contents ?? []).flatMap((object) =>
+        object.Key
+          ? [
+              {
+                key: object.Key,
+                ...(object.Size === undefined
+                  ? {}
+                  : { sizeBytes: object.Size }),
+                ...(object.LastModified === undefined
+                  ? {}
+                  : { lastModified: object.LastModified }),
+              },
+            ]
+          : [],
+      ),
+      nextContinuationToken: result.IsTruncated
+        ? result.NextContinuationToken
+        : undefined,
+    };
   }
 }
