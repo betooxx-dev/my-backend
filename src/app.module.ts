@@ -8,6 +8,7 @@ import { AllExceptionsFilter, TransformInterceptor } from '@common/index';
 import { LoggerMiddleware } from '@common/middleware/logger.middleware';
 import { BlogsModule } from '@/modules/blogs/blogs.module';
 import { ApiKeysModule } from '@/modules/api-keys/api-keys.module';
+import { HealthModule } from '@/modules/health/health.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ApiKeysModule } from '@/modules/api-keys/api-keys.module';
     }),
     ApiKeysModule,
     BlogsModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

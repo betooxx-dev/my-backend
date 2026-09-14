@@ -48,7 +48,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://localhost:5000/api/blog/posts?locale=es').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s
