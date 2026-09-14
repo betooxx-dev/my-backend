@@ -35,6 +35,11 @@ The API is available at <http://localhost:5001/api> and, in dev/test, Swagger at
 `STAGE=prod`. The source tree is mounted for hot reload, while dependencies,
 PostgreSQL data, and uploaded assets stay in named Docker volumes.
 
+Health checks are public: `/api/health/live` reports that the HTTP process is
+serving, while `/api/health/ready` reports that PostgreSQL is reachable. The
+Compose healthcheck uses readiness; neither endpoint returns dependency
+details or secrets.
+
 Create an administrative API key after PostgreSQL is running:
 
 ```bash
