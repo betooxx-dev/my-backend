@@ -1,3 +1,4 @@
+import { blogAdminScenarios } from './blog-admin-scenarios';
 /*
  * Supertest and Nest expose the test HTTP server and decoded JSON bodies as
  * `any`; assertions below deliberately validate those runtime boundaries.
@@ -22,6 +23,7 @@ import { configureApplication } from '../src/configure-application';
 const TEST_ASSET_MAX_BYTES = 64 * 1024;
 
 describe('Blogs API (e2e)', () => {
+  blogAdminScenarios(() => ({ app, token: adminToken }));
   let app: NestExpressApplication;
   let postgres: StartedPostgreSqlContainer;
   let adminToken: string;
@@ -78,6 +80,11 @@ describe('Blogs API (e2e)', () => {
       enableSwagger: false,
     });
     await app.init();
+    await request(app.getHttpServer())
+      .post('/api/blog/admin/categories')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Engineering', position: 0 })
+      .expect(201);
   });
 
   afterAll(async () => {
@@ -484,6 +491,13 @@ describe('Blogs API (e2e)', () => {
       .expect(200)
       .expect((response) => {
         expect(response.body.data).toEqual(['architecture', 'studio']);
+      });
+
+    await request(app.getHttpServer())
+      .get('/api/blog/categories?locale=en')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.data).toEqual(['Engineering']);
       });
 
     await request(app.getHttpServer())

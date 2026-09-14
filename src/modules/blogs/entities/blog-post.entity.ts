@@ -1,3 +1,4 @@
+import { BlogCategory } from '../categories/blog-category.entity';
 import {
   Column,
   CreateDateColumn,
@@ -39,6 +40,14 @@ export class BlogPost {
   @Column({ length: 80, default: 'General' })
   category: string;
 
+  @ManyToOne(() => BlogCategory, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
+  @JoinColumn({
+    name: 'category',
+    referencedColumnName: 'name',
+    foreignKeyConstraintName: 'FK_blog_posts_category',
+  })
+  categoryEntity: BlogCategory;
+
   @Column({ type: 'text', array: true, default: () => "'{}'" })
   tags: string[];
 
@@ -47,7 +56,7 @@ export class BlogPost {
 
   @ManyToOne(() => BlogAsset, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'coverAssetId' })
-  coverAsset: BlogAsset | null;
+  coverAsset?: BlogAsset | null;
 
   @Column({ default: false })
   featured: boolean;

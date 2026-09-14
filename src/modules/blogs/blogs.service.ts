@@ -20,6 +20,7 @@ export interface BlogPostResponse {
   category: string;
   tags: string[];
   cover: string;
+  coverAlt: string;
   coverAssetId: string;
   featured: boolean;
   status: BlogPostStatus.PUBLISHED;
@@ -38,6 +39,7 @@ export class BlogsService {
     const posts = await this.posts.find({
       where: { locale, status: BlogPostStatus.PUBLISHED },
       order: { publishedAt: 'DESC' },
+      relations: { coverAsset: true },
     });
     return posts.map((post) => this.toResponse(post));
   }
@@ -54,6 +56,23 @@ export class BlogsService {
     return Array.from(new Set(posts.flatMap((post) => post.tags))).sort();
   }
 
+  async getAllCategories(locale: BlogLocale): Promise<string[]> {
+    const rows = await this.posts
+      .createQueryBuilder('post')
+      .innerJoin('post.categoryEntity', 'category')
+      .select('category.name', 'name')
+      .addSelect('category.position', 'position')
+      .where('post.locale = :locale AND post.status = :status', {
+        locale,
+        status: BlogPostStatus.PUBLISHED,
+      })
+      .distinct(true)
+      .orderBy('category.position', 'ASC')
+      .addOrderBy('category.name', 'ASC')
+      .getRawMany<{ name: string; position: number }>();
+    return rows.map((row) => row.name);
+  }
+
   async getRelatedPosts(
     locale: BlogLocale,
     slug: string,
@@ -66,6 +85,7 @@ export class BlogsService {
         status: BlogPostStatus.PUBLISHED,
       },
       order: { publishedAt: 'DESC' },
+      relations: { coverAsset: true },
     });
     const tags = new Set(post.tags);
 
@@ -86,6 +106,7 @@ export class BlogsService {
   ): Promise<BlogPost> {
     const post = await this.posts.findOne({
       where: { locale, slug, status: BlogPostStatus.PUBLISHED },
+      relations: { coverAsset: true },
     });
     if (!post) throw new NotFoundException('Blog post not found');
     return post;
@@ -110,6 +131,7 @@ export class BlogsService {
       tags: post.tags,
       cover: blogAssetPublicUrl(post.coverAssetId),
       coverAssetId: post.coverAssetId,
+      coverAlt: post.coverAsset?.altText ?? '',
       featured: post.featured,
       status: BlogPostStatus.PUBLISHED,
       createdAt: post.createdAt.toISOString(),

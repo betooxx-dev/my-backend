@@ -21,6 +21,12 @@ export class BlogsController {
   }
 
   @Public()
+  @Get('categories')
+  getCategories(@Query() query: BlogLocaleQueryDto) {
+    return this.blogs.getAllCategories(query.locale);
+  }
+
+  @Public()
   @Get('posts/:locale/:slug')
   getPostBySlug(@Param() params: BlogPostParamsDto) {
     return this.blogs.findPublishedBySlug(params.locale, params.slug);
