@@ -1,13 +1,19 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'node:crypto';
-import { IsNull, Not, Repository } from 'typeorm';
+import { IsNull, Not, QueryFailedError, Repository } from 'typeorm';
 
 import { envs } from '@config/index';
+import {
+  ApiKeyInputError,
+  validateApiKeyCreateInput,
+  type ValidatedApiKeyCreateInput,
+} from './api-key-input';
 import { CreateApiKeyDto } from './dto/create-api-key.dto';
 import { ApiKey } from './entities/api-key.entity';
 
@@ -24,12 +30,21 @@ export class ApiKeysService {
   ) {}
 
   async create(dto: CreateApiKeyDto): Promise<CreatedApiKey> {
+    let input: ValidatedApiKeyCreateInput;
+    try {
+      input = validateApiKeyCreateInput(dto);
+    } catch (error) {
+      if (error instanceof ApiKeyInputError)
+        throw new BadRequestException(error.message);
+      throw error;
+    }
+
     const existing = await this.apiKeys.findOne({
-      where: { name: dto.name, revokedAt: IsNull() },
+      where: { name: input.name, revokedAt: IsNull() },
     });
     if (existing)
       throw new ConflictException(
-        `An active API key with name "${dto.name}" already exists`,
+        `An active API key with name "${input.name}" already exists`,
       );
 
     const token = this.generateToken();
@@ -37,22 +52,31 @@ export class ApiKeysService {
     const displayPrefix = token.slice(0, 16);
 
     const expiresAt =
-      typeof dto.expiresInDays === 'number'
-        ? new Date(Date.now() + dto.expiresInDays * 24 * 60 * 60 * 1000)
+      typeof input.expiresInDays === 'number'
+        ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
         : null;
 
-    const record = await this.apiKeys.save(
-      this.apiKeys.create({
-        name: dto.name,
-        hash,
-        displayPrefix,
-        scopes: dto.scopes ?? [],
-        active: true,
-        expiresAt,
-        lastUsedAt: null,
-        revokedAt: null,
-      }),
-    );
+    let record: ApiKey;
+    try {
+      record = await this.apiKeys.save(
+        this.apiKeys.create({
+          name: input.name,
+          hash,
+          displayPrefix,
+          scopes: input.scopes,
+          active: true,
+          expiresAt,
+          lastUsedAt: null,
+          revokedAt: null,
+        }),
+      );
+    } catch (error) {
+      if (isPostgresUniqueViolation(error))
+        throw new ConflictException(
+          `An active API key with name "${input.name}" already exists`,
+        );
+      throw error;
+    }
 
     return { token, record };
   }
@@ -107,4 +131,11 @@ export class ApiKeysService {
     const secret = randomBytes(32).toString('hex');
     return `${prefix}${secret}`;
   }
+}
+
+function isPostgresUniqueViolation(error: unknown): boolean {
+  return (
+    error instanceof QueryFailedError &&
+    (error.driverError as { code?: string }).code === '23505'
+  );
 }

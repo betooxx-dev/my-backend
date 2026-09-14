@@ -43,6 +43,9 @@ docker compose exec api npm run api-key:create -- --name studio --scopes blog:ad
 
 The token is shown only once. Studio sends it as
 `Authorization: Bearer <token>` for every `/api/blog/admin/*` request.
+The header must contain exactly one non-whitespace token; malformed or
+ambiguous Bearer headers are rejected. Names are unique while active and can
+be reused after revocation; `--expires-days` must be a positive integer.
 
 Populate the local blog with bilingual demo posts and generated WebP covers:
 

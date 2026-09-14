@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { ApiKey } from '../entities/api-key.entity';
 import type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface';
+import { parseBearerToken } from '../api-key-input';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -58,9 +59,6 @@ export class ApiKeyGuard implements CanActivate {
 
   private extractToken(request: AuthenticatedRequest): string | undefined {
     const header = request.headers['authorization'];
-    if (!header || typeof header !== 'string') return undefined;
-    const [scheme, value] = header.split(' ');
-    if (scheme !== 'Bearer' || !value) return undefined;
-    return value.trim() || undefined;
+    return parseBearerToken(header);
   }
 }
