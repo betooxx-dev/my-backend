@@ -42,6 +42,12 @@ export function configureApplication(
     .setTitle('My Backend API')
     .setDescription('API for Alberto personal tools and automations')
     .setVersion('1.0')
+    .addTag('blog', 'Public blog endpoints')
+    .addTag('blog-admin', 'Administrative blog endpoints')
+    .addTag('blog-admin-categories', 'Administrative category endpoints')
+    .addTag('blog-admin-assets', 'Administrative asset endpoints')
+    .addTag('blog-assets', 'Public asset endpoints')
+    .addTag('health', 'Liveness and readiness endpoints')
     .addBearerAuth(
       {
         type: 'http',

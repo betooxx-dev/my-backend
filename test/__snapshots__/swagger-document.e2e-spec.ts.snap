@@ -1,0 +1,90 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`generated OpenAPI document keeps the public/admin surface and response schemas discoverable 1`] = `
+{
+  "paths": {
+    "/api/blog/admin/assets": [
+      "get",
+      "post",
+    ],
+    "/api/blog/admin/assets/{id}": [
+      "delete",
+    ],
+    "/api/blog/admin/categories": [
+      "get",
+      "post",
+    ],
+    "/api/blog/admin/categories/{name}": [
+      "delete",
+      "patch",
+    ],
+    "/api/blog/admin/posts": [
+      "get",
+      "post",
+    ],
+    "/api/blog/admin/posts/{id}": [
+      "delete",
+      "get",
+      "patch",
+    ],
+    "/api/blog/admin/posts/{id}/publish": [
+      "post",
+    ],
+    "/api/blog/admin/posts/{id}/unpublish": [
+      "post",
+    ],
+    "/api/blog/admin/tags": [
+      "get",
+    ],
+    "/api/blog/assets/{id}": [
+      "get",
+    ],
+    "/api/blog/categories": [
+      "get",
+    ],
+    "/api/blog/posts": [
+      "get",
+    ],
+    "/api/blog/posts/{locale}/{slug}": [
+      "get",
+    ],
+    "/api/blog/posts/{locale}/{slug}/related": [
+      "get",
+    ],
+    "/api/blog/tags": [
+      "get",
+    ],
+    "/api/health/live": [
+      "get",
+    ],
+    "/api/health/ready": [
+      "get",
+    ],
+  },
+  "responseSchemas": [
+    "AdminBlogPostResponseDto",
+    "ApiErrorResponseDto",
+    "BlogAssetResponseDto",
+    "BlogCategoryResponseDto",
+    "BlogPostResponseDto",
+    "DeletedResponseDto",
+    "HealthResponseDto",
+  ],
+  "securitySchemes": {
+    "api-key": {
+      "bearerFormat": "ApiKey",
+      "description": "Bearer token — API key generated via CLI scripts",
+      "scheme": "bearer",
+      "type": "http",
+    },
+  },
+  "tags": [
+    "blog",
+    "blog-admin",
+    "blog-admin-assets",
+    "blog-admin-categories",
+    "blog-assets",
+    "health",
+  ],
+}
+`;
