@@ -7,7 +7,21 @@ draft/published lifecycle, API-key protected administration, and image assets.
 ## Requirements
 
 - Docker Desktop (recommended for local development)
-- Node.js 22 and npm only when running the API outside Docker
+- Node.js `>=22.19.0 <23` and npm `>=10.9.0 <11` when running the API outside Docker
+
+The repository pins Node.js 22.19.0 in `.nvmrc` and enforces the declared
+engines during dependency installation. With nvm, select the supported runtime
+before installing dependencies:
+
+```bash
+nvm install
+nvm use
+node --version
+npm --version
+```
+
+The expected versions are Node.js 22.19.0 or newer within the 22.x line and
+npm 10.x. CI and the Docker image use the same Node.js major line.
 
 ## Local setup
 
